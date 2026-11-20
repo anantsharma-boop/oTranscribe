@@ -1,3 +1,13 @@
+var crypto = require("crypto");
+
+// Webpack 3 and babel-loader 7 hash with MD4, which OpenSSL 3 (Node 17+) rejects.
+// Swap in SHA-256 so the build runs on both old and new Node versions.
+var originalCreateHash = crypto.createHash;
+crypto.createHash = function (algorithm) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  return originalCreateHash.apply(crypto, [algorithm === "md4" ? "sha256" : algorithm].concat(args));
+};
+
 var path = require('path');
 var ExtractTextPlugin = require("extract-text-webpack-plugin");
 var CopyWebpackPlugin = require('copy-webpack-plugin');
@@ -32,7 +42,12 @@ module.exports = {
       // Extract css files
       {
           test: /\.scss$/,
-          loader: ExtractTextPlugin.extract(['css-loader','sass-loader'])
+          use: ExtractTextPlugin.extract({
+            use: [
+              'css-loader',
+              { loader: 'sass-loader', options: { implementation: require('sass') } }
+            ]
+          })
           
       }
       
